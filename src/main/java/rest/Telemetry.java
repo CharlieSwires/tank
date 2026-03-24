@@ -18,7 +18,7 @@ public class Telemetry {
 	@Autowired
 	private Ads1115 adc;
 
-	@GetMapping(path = "volts/{channel}", consumes = "application/json", produces = "application/json")
+	@GetMapping(path = "volts/{channel}", consumes = "application/json")
 	public ResponseEntity<Double> getBatteryVolts (@PathVariable("channel") Integer channel){
 		try {
 			return new ResponseEntity<Double>(adc.readVolts(channel),HttpStatus.OK);
