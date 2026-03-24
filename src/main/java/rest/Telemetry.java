@@ -22,7 +22,7 @@ public class Telemetry {
 	public ResponseEntity<Double> getBatteryVolts (@PathVariable("channel") Integer channel){
 		try {
 			return new ResponseEntity<Double>(adc.readVolts(channel),HttpStatus.OK);
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
