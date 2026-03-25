@@ -17,7 +17,6 @@ import com.pi4j.io.i2c.I2CConfig;
 import com.pi4j.io.i2c.I2CProvider;
 
 import Const.Constant;
-import implementation.Telemetry.WatchDog;
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -167,7 +166,7 @@ public class Ads1115 {
 	// Watch Dog thread class
 	public class WatchDog extends Thread {
 
-		private boolean timeout = false;
+		private AtomicBoolean timeout = new AtomicBoolean(false);
 		@Override
 		public void run() {
 			while (true) {
@@ -196,11 +195,11 @@ public class Ads1115 {
 		}
 
 		private void setTimeout(boolean b) {
-			timeout = b;			
+			timeout.set(b);			
 		}
 
 		public boolean getTimeout() {
-			return timeout;
+			return timeout.get();
 		}
 	}
 }

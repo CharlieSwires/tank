@@ -1,7 +1,6 @@
 package implementation;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -31,7 +30,7 @@ public class Telemetry {
 	// Watch Dog thread class
 	public class WatchDog extends Thread {
 
-		private boolean timeout = false;
+		private AtomicBoolean timeout = new AtomicBoolean(false);
 		@Override
 		public void run() {
 			while (true) {
@@ -60,11 +59,11 @@ public class Telemetry {
 		}
 
 		private void setTimeout(boolean b) {
-			timeout = b;			
+			timeout.set(b);			
 		}
 		
 		public boolean getTimeout() {
-			return timeout;
+			return timeout.get();
 		}
 	}
 	public Double getTemperature() {
