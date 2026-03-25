@@ -30,14 +30,14 @@ public class TelemetryRest {
 		}
 		return null;
 	}
-    @GetMapping(path = "cpu-temp", produces = "application/json")
-    public ResponseEntity<Double> getTemperature (){
+	@GetMapping(path = "cpu-temp", produces = "application/json")
+	public ResponseEntity<Double> getTemperature (){
 		try {
-		return new ResponseEntity<Double>(telem.getTemperature(),HttpStatus.OK);
+			return new ResponseEntity<Double>(telem.getTemperature(),HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
-    }
+	}
 
 }

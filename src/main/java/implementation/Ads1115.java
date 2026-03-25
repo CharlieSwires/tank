@@ -50,7 +50,7 @@ public class Ads1115 {
 
 		System.out.println("Raw ADC = " + raw);
 		System.out.printf("Voltage = %.6f V%n", volts);
-		return volts * 2.5;
+		return volts;
 	}
 	/**
 	 * Reads a single-ended channel 0..3 using single-shot mode.
