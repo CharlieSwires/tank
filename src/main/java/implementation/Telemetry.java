@@ -38,7 +38,7 @@ public class Telemetry {
 				if (startTimer.get()) {
 					try {
 						// Sleep for 1second
-						WatchDog.sleep(1000);
+						WatchDog.sleep(10000);
 						setTimeout(true);
 						log.error("Watchdog timed out!!");
 					} catch (InterruptedException e) {
@@ -50,7 +50,7 @@ public class Telemetry {
 				} else {
 					setTimeout(false);
 					try {
-						WatchDog.sleep(250);
+						WatchDog.sleep(500);
 					} catch (InterruptedException e) {
 						log.debug("InterruptedException false");
 						continue;
