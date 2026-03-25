@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import Const.Constant;
 import implementation.Ads1115;
 import implementation.Telemetry;
 
@@ -34,6 +35,26 @@ public class TelemetryRest {
 	public ResponseEntity<Double> getTemperature (){
 		try {
 			return new ResponseEntity<Double>(telem.getTemperature(),HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return new ResponseEntity<Double>((Double)null,HttpStatus.REQUEST_TIMEOUT);
+	}
+	@GetMapping(path = "timeout-temp", produces = "application/json")
+	public ResponseEntity<Double> getTimeoutTemp (){
+		try {
+			return new ResponseEntity<Double>(
+					(telem.watchDogThread.getTimeout()?0.0:(Double.parseDouble(""+Constant.ERROR))),HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return new ResponseEntity<Double>((Double)null,HttpStatus.REQUEST_TIMEOUT);
+	}	
+	@GetMapping(path = "timeout-battery", produces = "application/json")
+	public ResponseEntity<Double> getTimeoutVolts (){
+		try {
+			return new ResponseEntity<Double>(
+					(adc.watchDogThread.getTimeout()?0.0:(Double.parseDouble(""+Constant.ERROR))),HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -16,6 +16,8 @@ import com.pi4j.io.i2c.I2C;
 import com.pi4j.io.i2c.I2CConfig;
 import com.pi4j.io.i2c.I2CProvider;
 
+import implementation.Telemetry.WatchDog;
+
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class Ads1115 {
@@ -29,7 +31,7 @@ public class Ads1115 {
 	private static final int ADS1115_ADDR   = 0x48;
 	private static final int I2C_BUS        = 1;
 	private static I2C i2c2 = null;
-	private static WatchDog watchDogThread = null;
+	public static WatchDog watchDogThread = null;
 	public AtomicBoolean startTimer = new AtomicBoolean(false);
 	private static boolean disabled = true;
 
@@ -157,22 +159,26 @@ public class Ads1115 {
 		return ((buffer[0] & 0xFF) << 8) | (buffer[1] & 0xFF);
 	}
 	// Watch Dog thread class
-	private class WatchDog extends Thread {
+	public class WatchDog extends Thread {
 
+		boolean timeout = false;
 		@Override
 		public void run() {
 			while (true) {
 				if (startTimer.get()) {
 					try {
-						// Sleep for 10seconds
+						// Sleep for 1second
 						WatchDog.sleep(1000);
-						throw new RuntimeException("Watchdog timed out!!");
+						setTimeout(true);
+						log.error("Watchdog timed out!!");
 					} catch (InterruptedException e) {
+						setTimeout(false);
 						log.debug("InterruptedException true");
 						continue;
 					}
 
 				} else {
+					setTimeout(false);
 					try {
 						WatchDog.sleep(250);
 					} catch (InterruptedException e) {
@@ -181,6 +187,14 @@ public class Ads1115 {
 					}
 				}
 			}
+		}
+
+		private void setTimeout(boolean b) {
+			timeout = b;			
+		}
+		
+		public boolean getTimeout() {
+			return timeout;
 		}
 	}
 }

@@ -18,7 +18,7 @@ import Const.Constant;
 public class Telemetry {
 	
 	Logger log = LoggerFactory.getLogger(Telemetry.class);
-	private static WatchDog watchDogThread = null;
+	public static WatchDog watchDogThread = null;
 	public AtomicBoolean startTimer = new AtomicBoolean(false);
 	private static boolean disabled = true;
 	
@@ -29,8 +29,9 @@ public class Telemetry {
 
 	}
 	// Watch Dog thread class
-	private class WatchDog extends Thread {
+	public class WatchDog extends Thread {
 
+		boolean timeout = false;
 		@Override
 		public void run() {
 			while (true) {
@@ -38,13 +39,16 @@ public class Telemetry {
 					try {
 						// Sleep for 1second
 						WatchDog.sleep(1000);
-						throw new RuntimeException("Watchdog timed out!!");
+						setTimeout(true);
+						log.error("Watchdog timed out!!");
 					} catch (InterruptedException e) {
+						setTimeout(false);
 						log.debug("InterruptedException true");
 						continue;
 					}
 
 				} else {
+					setTimeout(false);
 					try {
 						WatchDog.sleep(250);
 					} catch (InterruptedException e) {
@@ -53,6 +57,14 @@ public class Telemetry {
 					}
 				}
 			}
+		}
+
+		private void setTimeout(boolean b) {
+			timeout = b;			
+		}
+		
+		public boolean getTimeout() {
+			return timeout;
 		}
 	}
 	public Double getTemperature() {
