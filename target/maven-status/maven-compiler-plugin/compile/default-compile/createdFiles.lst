@@ -1,5 +1,7 @@
 Const\Constant.class
 rest\TelemetryRest.class
+implementation\Telemetry$WatchDog.class
 rest\MainApp.class
-implementation\Ads1115.class
+implementation\Ads1115$WatchDog.class
 implementation\Telemetry.class
+implementation\Ads1115.class

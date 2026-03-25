@@ -28,7 +28,7 @@ public class TelemetryRest {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return null;
+		return new ResponseEntity<Double>((Double)null,HttpStatus.REQUEST_TIMEOUT);
 	}
 	@GetMapping(path = "cpu-temp", produces = "application/json")
 	public ResponseEntity<Double> getTemperature (){
@@ -37,7 +37,7 @@ public class TelemetryRest {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return null;
+		return new ResponseEntity<Double>((Double)null,HttpStatus.REQUEST_TIMEOUT);
 	}
 
 }

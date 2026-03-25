@@ -3,6 +3,7 @@ package implementation;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +18,56 @@ import Const.Constant;
 public class Telemetry {
 	
 	Logger log = LoggerFactory.getLogger(Telemetry.class);
+	private static WatchDog watchDogThread = null;
+	public AtomicBoolean startTimer = new AtomicBoolean(false);
+	private static boolean disabled = true;
 	
+	public Telemetry() {
+		watchDogThread = new WatchDog();
+		disabled = !"true".equals(System.getenv("WATCHDOG_ENABLED"))? true : false;
+		watchDogThread.start();
+
+	}
+	// Watch Dog thread class
+	private class WatchDog extends Thread {
+
+		@Override
+		public void run() {
+			while (true) {
+				if (startTimer.get()) {
+					try {
+						// Sleep for 1second
+						WatchDog.sleep(1000);
+						throw new RuntimeException("Watchdog timed out!!");
+					} catch (InterruptedException e) {
+						log.debug("InterruptedException true");
+						continue;
+					}
+
+				} else {
+					try {
+						WatchDog.sleep(250);
+					} catch (InterruptedException e) {
+						log.debug("InterruptedException false");
+						continue;
+					}
+				}
+			}
+		}
+	}
 	public Double getTemperature() {
 		try {
+			if (!disabled) {
+				if (watchDogThread != null) {
+					startTimer.set(true);
+					watchDogThread.interrupt();
+				}
+			} else {
+				if (watchDogThread != null) {
+					startTimer.set(false);
+					watchDogThread.interrupt();
+				}
+			}
 			// Execute the command to get the temperature
 			String[] commands = { "vcgencmd", "measure_temp" };
 			Process process = Runtime.getRuntime().exec(commands);

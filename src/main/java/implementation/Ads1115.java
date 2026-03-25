@@ -1,6 +1,10 @@
 package implementation;
 
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -15,6 +19,7 @@ import com.pi4j.io.i2c.I2CProvider;
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class Ads1115 {
+	Logger log = LoggerFactory.getLogger(Ads1115.class);
 
 	// ADS1115 register pointer values
 	private static final int REG_CONVERSION = 0x00;
@@ -24,10 +29,15 @@ public class Ads1115 {
 	private static final int ADS1115_ADDR   = 0x48;
 	private static final int I2C_BUS        = 1;
 	private static I2C i2c2 = null;
-	
+	private static WatchDog watchDogThread = null;
+	public AtomicBoolean startTimer = new AtomicBoolean(false);
+	private static boolean disabled = true;
+
 	@Autowired
 	public Ads1115() throws InterruptedException {
 		Context pi4j = Pi4J.newAutoContext();
+		watchDogThread = new WatchDog();
+		disabled = !"true".equals(System.getenv("WATCHDOG_ENABLED"))? true : false;
 
 		I2CProvider provider = pi4j.provider("linuxfs-i2c");
 		I2CConfig config = I2C.newConfigBuilder(pi4j)
@@ -42,12 +52,24 @@ public class Ads1115 {
 		} finally {
 			pi4j.shutdown();
 		}
+		watchDogThread.start();
 	}
 
 	public double readVolts(int channel) throws InterruptedException {
 		int raw = readSingleEnded(i2c2, channel);   // read AIN0
 		double volts = rawToVolts(raw, 4.096); // adjust to match PGA below
-
+		// Kick watchdog exactly as you already do
+		if (!disabled) {
+			if (watchDogThread != null) {
+				startTimer.set(true);
+				watchDogThread.interrupt();
+			}
+		} else {
+			if (watchDogThread != null) {
+				startTimer.set(false);
+				watchDogThread.interrupt();
+			}
+		}
 		System.out.println("Raw ADC = " + raw);
 		System.out.printf("Voltage = %.6f V%n", volts);
 		return volts;
@@ -133,5 +155,32 @@ public class Ads1115 {
 		i2c.write((byte) register); // set pointer register
 		i2c.read(buffer, 0, 2);
 		return ((buffer[0] & 0xFF) << 8) | (buffer[1] & 0xFF);
+	}
+	// Watch Dog thread class
+	private class WatchDog extends Thread {
+
+		@Override
+		public void run() {
+			while (true) {
+				if (startTimer.get()) {
+					try {
+						// Sleep for 10seconds
+						WatchDog.sleep(1000);
+						throw new RuntimeException("Watchdog timed out!!");
+					} catch (InterruptedException e) {
+						log.debug("InterruptedException true");
+						continue;
+					}
+
+				} else {
+					try {
+						WatchDog.sleep(250);
+					} catch (InterruptedException e) {
+						log.debug("InterruptedException false");
+						continue;
+					}
+				}
+			}
+		}
 	}
 }
