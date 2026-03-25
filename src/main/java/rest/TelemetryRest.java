@@ -44,7 +44,7 @@ public class TelemetryRest {
 	public ResponseEntity<Double> getTimeoutTemp (){
 		try {
 			return new ResponseEntity<Double>(
-					(!telem.watchDogThread.getTimeout()?0.0:(Double.parseDouble(""+Constant.ERROR))),HttpStatus.OK);
+					(!telem.watchDogThread.getTimeout())?0.0:(Double.parseDouble(""+Constant.ERROR)),HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -54,7 +54,7 @@ public class TelemetryRest {
 	public ResponseEntity<Double> getTimeoutVolts (){
 		try {
 			return new ResponseEntity<Double>(
-					(!adc.watchDogThread.getTimeout()?0.0:(Double.parseDouble(""+Constant.ERROR))),HttpStatus.OK);
+					(!adc.watchDogThread.getTimeout())?0.0:(Double.parseDouble(""+Constant.ERROR)),HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

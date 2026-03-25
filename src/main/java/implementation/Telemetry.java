@@ -31,7 +31,7 @@ public class Telemetry {
 	// Watch Dog thread class
 	public class WatchDog extends Thread {
 
-		boolean timeout = false;
+		private boolean timeout = false;
 		@Override
 		public void run() {
 			while (true) {
