@@ -1,3 +1,5 @@
-rest\Telemetry.class
+Const\Constant.class
+rest\TelemetryRest.class
 rest\MainApp.class
 implementation\Ads1115.class
+implementation\Telemetry.class
