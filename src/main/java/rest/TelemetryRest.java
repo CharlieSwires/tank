@@ -23,11 +23,11 @@ public class TelemetryRest {
 
 	@GetMapping(path = "volts/{channel}", produces = "application/json")
 	public ResponseEntity<Double> getBatteryVolts (@PathVariable("channel") Integer channel){
-		try {
-			return new ResponseEntity<Double>(adc.readVolts(channel),HttpStatus.OK);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+//		try {
+//			return new ResponseEntity<Double>(adc.readVolts(channel),HttpStatus.OK);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
 		return null;
 	}
 	@GetMapping(path = "cpu-temp", produces = "application/json")
