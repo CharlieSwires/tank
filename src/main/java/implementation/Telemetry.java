@@ -96,8 +96,9 @@ public class Telemetry {
 				Double tempDouble = Double.parseDouble(tempString);
 				return tempDouble;
 			}
-		} catch (IOException e) {
-			log.error("Problem getting temperature.");        }
+		} catch (Exception e) {
+			log.error("Problem getting temperature.");
+		}
 		return (double) Constant.ERROR; 
 	}
 

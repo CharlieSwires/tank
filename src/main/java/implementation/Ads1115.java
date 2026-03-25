@@ -16,6 +16,7 @@ import com.pi4j.io.i2c.I2C;
 import com.pi4j.io.i2c.I2CConfig;
 import com.pi4j.io.i2c.I2CProvider;
 
+import Const.Constant;
 import implementation.Telemetry.WatchDog;
 
 @Component
@@ -58,23 +59,28 @@ public class Ads1115 {
 	}
 
 	public double readVolts(int channel) throws InterruptedException {
-		int raw = readSingleEnded(i2c2, channel);   // read AIN0
-		double volts = rawToVolts(raw, 4.096); // adjust to match PGA below
-		// Kick watchdog exactly as you already do
-		if (!disabled) {
-			if (watchDogThread != null) {
-				startTimer.set(true);
-				watchDogThread.interrupt();
+		try {
+			int raw = readSingleEnded(i2c2, channel);   // read AIN0
+			double volts = rawToVolts(raw, 4.096); // adjust to match PGA below
+			// Kick watchdog exactly as you already do
+			if (!disabled) {
+				if (watchDogThread != null) {
+					startTimer.set(true);
+					watchDogThread.interrupt();
+				}
+			} else {
+				if (watchDogThread != null) {
+					startTimer.set(false);
+					watchDogThread.interrupt();
+				}
 			}
-		} else {
-			if (watchDogThread != null) {
-				startTimer.set(false);
-				watchDogThread.interrupt();
-			}
+			System.out.println("Raw ADC = " + raw);
+			System.out.printf("Voltage = %.6f V%n", volts);
+			return volts;
+		} catch (Exception e) {
+			log.error("Problem getting volts");
+			return Double.parseDouble(""+Constant.ERROR);
 		}
-		System.out.println("Raw ADC = " + raw);
-		System.out.printf("Voltage = %.6f V%n", volts);
-		return volts;
 	}
 	/**
 	 * Reads a single-ended channel 0..3 using single-shot mode.
@@ -192,7 +198,7 @@ public class Ads1115 {
 		private void setTimeout(boolean b) {
 			timeout = b;			
 		}
-		
+
 		public boolean getTimeout() {
 			return timeout;
 		}
