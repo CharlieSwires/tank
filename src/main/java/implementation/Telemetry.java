@@ -21,7 +21,7 @@ public class Telemetry {
 	public Double getTemperature() {
 		try {
 			// Execute the command to get the temperature
-			String[] commands = { "vcgencmd measure_temp" };
+			String[] commands = { "vcgencmd", "measure_temp" };
 			Process process = Runtime.getRuntime().exec(commands);
 			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
@@ -33,7 +33,7 @@ public class Telemetry {
 				String tempString = line.split("=")[1].replace("'C", "");
 
 				// Convert to double, multiply by 10, and then to integer
-				Double tempDouble = Double.parseDouble(tempString) * 10;
+				Double tempDouble = Double.parseDouble(tempString);
 				return tempDouble;
 			}
 		} catch (IOException e) {
