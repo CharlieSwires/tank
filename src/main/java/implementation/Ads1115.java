@@ -77,6 +77,7 @@ public class Ads1115 {
 			System.out.printf("Voltage = %.6f V%n", volts);
 			return volts;
 		} catch (Exception e) {
+			e.printStackTrace();
 			log.error("Problem getting volts");
 			return Double.parseDouble(""+Constant.ERROR);
 		}
