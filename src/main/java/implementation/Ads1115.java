@@ -1,11 +1,11 @@
 package implementation;
 
-
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import jakarta.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -21,186 +21,152 @@ import Const.Constant;
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class Ads1115 {
-	Logger log = LoggerFactory.getLogger(Ads1115.class);
 
-	// ADS1115 register pointer values
-	private static final int REG_CONVERSION = 0x00;
-	private static final int REG_CONFIG     = 0x01;
+    private static final Logger log = LoggerFactory.getLogger(Ads1115.class);
 
-	// Common default I2C address if ADDR is tied to GND
-	private static final int ADS1115_ADDR   = 0x48;
-	private static final int I2C_BUS        = 1;
-	private static I2C i2c2 = null;
-	public static WatchDog watchDogThread = null;
-	public AtomicBoolean startTimer = new AtomicBoolean(false);
-	private static boolean disabled = true;
+    private static final int REG_CONVERSION = 0x00;
+    private static final int REG_CONFIG = 0x01;
+    private static final int ADS1115_ADDR = 0x48;
+    private static final int I2C_BUS = 1;
 
-	@Autowired
-	public Ads1115() throws InterruptedException {
-		Context pi4j = Pi4J.newAutoContext();
-		watchDogThread = new WatchDog();
-		disabled = !"true".equals(System.getenv("WATCHDOG_ENABLED"))? true : false;
+    private final Context pi4j;
+    private final I2C i2c2;
 
-		I2CProvider provider = pi4j.provider("linuxfs-i2c");
-		I2CConfig config = I2C.newConfigBuilder(pi4j)
-				.id("ADS1115")
-				.name("ADS1115 ADC")
-				.bus(I2C_BUS)
-				.device(ADS1115_ADDR)
-				.build();
+    public WatchDog watchDogThread;
+    public AtomicBoolean startTimer = new AtomicBoolean(false);
+    private static boolean disabled = true;
 
-		try  {
-			i2c2 = provider.create(config);
-		} finally {
-			pi4j.shutdown();
-		}
-		watchDogThread.start();
-	}
+    public Ads1115() {
+        this.pi4j = Pi4J.newAutoContext();
+        disabled = !"true".equals(System.getenv("WATCHDOG_ENABLED"));
 
-	public double readVolts(int channel) throws InterruptedException {
-		try {
-			int raw = readSingleEnded(i2c2, channel);   // read AIN0
-			double volts = rawToVolts(raw, 4.096); // adjust to match PGA below
-			// Kick watchdog exactly as you already do
-			if (!disabled) {
-				if (watchDogThread != null) {
-					startTimer.set(true);
-					watchDogThread.interrupt();
-				}
-			} else {
-				if (watchDogThread != null) {
-					startTimer.set(false);
-					watchDogThread.interrupt();
-				}
-			}
-			System.out.println("Raw ADC = " + raw);
-			System.out.printf("Voltage = %.6f V%n", volts);
-			return volts;
-		} catch (Exception e) {
-			e.printStackTrace();
-			log.error("Problem getting volts");
-			return Double.parseDouble(""+Constant.ERROR);
-		}
-	}
-	/**
-	 * Reads a single-ended channel 0..3 using single-shot mode.
-	 */
-	private static int readSingleEnded(I2C i2c, int channel) throws InterruptedException {
-		if (channel < 0 || channel > 3) {
-			throw new IllegalArgumentException("Channel must be 0..3");
-		}
+        I2CProvider provider = pi4j.provider("linuxfs-i2c");
+        I2CConfig config = I2C.newConfigBuilder(pi4j)
+                .id("ADS1115")
+                .name("ADS1115 ADC")
+                .bus(I2C_BUS)
+                .device(ADS1115_ADDR)
+                .build();
 
-		/*
-		 * Config register layout:
-		 * bit 15    OS        = 1 (start single conversion)
-		 * bits 14:12 MUX      = 100 + channel (AINx vs GND)
-		 * bits 11:9 PGA       = 001 (±4.096V full scale)
-		 * bit 8     MODE      = 1 (single-shot)
-		 * bits 7:5  DR        = 100 (128 SPS)
-		 * bits 4:0  COMP_*    = 00011 (disable comparator)
-		 *
-		 * Result for channel 0:
-		 * 1 100 001 1 100 00011b
-		 */
-		int muxBits = switch (channel) {
-		case 0 -> 0b100;
-		case 1 -> 0b101;
-		case 2 -> 0b110;
-		case 3 -> 0b111;
-		default -> throw new IllegalArgumentException("Channel must be 0..3");
-		};
+        this.i2c2 = provider.create(config);
 
-		int config =
-				(1 << 15) |          // OS = start conversion
-				(muxBits << 12) |    // MUX = AINx to GND
-				(0b001 << 9) |       // PGA = ±4.096V
-				(1 << 8) |           // MODE = single-shot
-				(0b100 << 5) |       // DR = 128 SPS
-				(0b11);              // COMP_QUE = disable comparator
+        watchDogThread = new WatchDog();
+        watchDogThread.start();
+    }
 
-		writeRegister16(i2c, REG_CONFIG, config);
+    public synchronized double readVolts(int channel) {
+        try {
+            int raw = readSingleEnded(channel);
+            double volts = rawToVolts(raw, 4.096);
 
-		// At 128 SPS, one conversion is about 7.8 ms. Sleep a little longer.
-		Thread.sleep(10);
+            if (watchDogThread != null) {
+                startTimer.set(!disabled);
+                watchDogThread.interrupt();
+            }
 
-		// Optional: poll OS bit until conversion completes
-		while ((readRegister16(i2c, REG_CONFIG) & 0x8000) == 0) {
-			Thread.sleep(1);
-		}
+            log.info("Raw ADC = {}", raw);
+            log.info("Voltage = {}", volts);
+            return volts;
+        } catch (Exception e) {
+            log.error("Problem getting volts", e);
+            return Double.parseDouble("" + Constant.ERROR);
+        }
+    }
 
-		int raw = readRegister16(i2c, REG_CONVERSION);
+    private int readSingleEnded(int channel) throws InterruptedException {
+        if (channel < 0 || channel > 3) {
+            throw new IllegalArgumentException("Channel must be 0..3");
+        }
 
-		// Convert unsigned 16-bit container to signed Java int
-		if ((raw & 0x8000) != 0) {
-			raw -= 65536;
-		}
+        int muxBits = switch (channel) {
+            case 0 -> 0b100;
+            case 1 -> 0b101;
+            case 2 -> 0b110;
+            case 3 -> 0b111;
+            default -> throw new IllegalArgumentException("Channel must be 0..3");
+        };
 
-		return raw;
-	}
+        int config =
+                (1 << 15) |
+                (muxBits << 12) |
+                (0b001 << 9) |
+                (1 << 8) |
+                (0b100 << 5) |
+                (0b11);
 
-	/**
-	 * Convert raw ADS1115 reading to volts.
-	 * For a PGA of ±4.096V, LSB = 4.096 / 32768.
-	 */
-	private static double rawToVolts(int raw, double fullScaleVolts) {
-		return raw * (fullScaleVolts / 32768.0);
-	}
+        writeRegister16(REG_CONFIG, config);
 
-	/**
-	 * Writes a 16-bit value MSB first, as required by the ADS1115.
-	 */
-	private static void writeRegister16(I2C i2c, int register, int value) {
-		byte msb = (byte) ((value >> 8) & 0xFF);
-		byte lsb = (byte) (value & 0xFF);
-		i2c.writeRegister(register, new byte[]{msb, lsb}, 0, 2);
-	}
+        Thread.sleep(10);
 
-	/**
-	 * Reads a 16-bit register MSB first.
-	 */
-	private static int readRegister16(I2C i2c, int register) {
-		byte[] buffer = new byte[2];
-		i2c.write((byte) register); // set pointer register
-		i2c.read(buffer, 0, 2);
-		return ((buffer[0] & 0xFF) << 8) | (buffer[1] & 0xFF);
-	}
-	// Watch Dog thread class
-	public class WatchDog extends Thread {
+        while ((readRegister16(REG_CONFIG) & 0x8000) == 0) {
+            Thread.sleep(1);
+        }
 
-		private AtomicBoolean timeout = new AtomicBoolean(false);
-		@Override
-		public void run() {
-			while (true) {
-				if (startTimer.get()) {
-					try {
-						// Sleep for 1second
-						WatchDog.sleep(10000);
-						setTimeout(true);
-						log.error("Watchdog timed out!!");
-					} catch (InterruptedException e) {
-						setTimeout(false);
-						log.debug("InterruptedException true");
-						continue;
-					}
+        int raw = readRegister16(REG_CONVERSION);
 
-				} else {
-					setTimeout(false);
-					try {
-						WatchDog.sleep(500);
-					} catch (InterruptedException e) {
-						log.debug("InterruptedException false");
-						continue;
-					}
-				}
-			}
-		}
+        if ((raw & 0x8000) != 0) {
+            raw -= 65536;
+        }
 
-		private void setTimeout(boolean b) {
-			timeout.set(b);			
-		}
+        return raw;
+    }
 
-		public boolean getTimeout() {
-			return timeout.get();
-		}
-	}
+    private static double rawToVolts(int raw, double fullScaleVolts) {
+        return raw * (fullScaleVolts / 32768.0);
+    }
+
+    private void writeRegister16(int register, int value) {
+        byte msb = (byte) ((value >> 8) & 0xFF);
+        byte lsb = (byte) (value & 0xFF);
+        i2c2.writeRegister(register, new byte[] { msb, lsb }, 0, 2);
+    }
+
+    private int readRegister16(int register) {
+        byte[] buffer = new byte[2];
+        i2c2.write((byte) register);
+        i2c2.read(buffer, 0, 2);
+        return ((buffer[0] & 0xFF) << 8) | (buffer[1] & 0xFF);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        try {
+            pi4j.shutdown();
+        } catch (Exception e) {
+            log.warn("Error shutting down Pi4J", e);
+        }
+    }
+
+    public class WatchDog extends Thread {
+        private AtomicBoolean timeout = new AtomicBoolean(false);
+
+        @Override
+        public void run() {
+            while (true) {
+                if (startTimer.get()) {
+                    try {
+                        WatchDog.sleep(10000);
+                        setTimeout(true);
+                        log.error("Watchdog timed out!!");
+                    } catch (InterruptedException e) {
+                        setTimeout(false);
+                    }
+                } else {
+                    setTimeout(false);
+                    try {
+                        WatchDog.sleep(500);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
+        }
+
+        private void setTimeout(boolean b) {
+            timeout.set(b);
+        }
+
+        public boolean getTimeout() {
+            return timeout.get();
+        }
+    }
 }
